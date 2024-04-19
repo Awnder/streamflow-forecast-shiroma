@@ -12,14 +12,16 @@ def get_commandline_input():
         If no input is given, returns today's date.
     '''
     parser = argparse.ArgumentParser(description='Controls date input for streamflow graph.')
-    parser.add_argument('date_string', nargs='?', type=str, default='')
+    parser.add_argument('-n', '--name', type='str', default='Trinity River', help='Name of the desired river')
+    parser.add_argument('-s', '--sensor', type=str, default='11527000', help='Sensor number to access')
+    parser.add_argument('-d', '--date', type=str, default='', help='Anchor date to view')
     args = parser.parse_args()
 
-    if args.date_string == '':
+    if args.date == '':
         return datetime.now().date()
     
     try:
-        date = str_to_date(args.date_string)
+        date = str_to_date(args.date)
         return date
     except Exception as e:
         print(e)
@@ -95,7 +97,7 @@ def get_streamflow_volume(df):
         avg_sum += width * (height + difference)
     return avg_sum
 
-def get_special_streamflow(df_list):
+def get_streamflow_specials(df_list):
     ''' Using the total volume of a given streamflow, gets the highest, lowest, average and returns their dataframes
     
     Args:
@@ -106,10 +108,11 @@ def get_special_streamflow(df_list):
     for df in df_list:
         volume_list.append(get_streamflow_volume(df))
 
-    df_max_inx = volume_list.index(max(volume_list))
+    df_max_idx = volume_list.index(max(volume_list))
     df_min_idx = volume_list.index(min(volume_list))
-    df_avg_idx = volume_list.index(sum(volume_list)/len(volume_list))
+    df_avg_idx = len(sorted(volume_list)) // 2
 
+    return (df_list[df_max_idx], df_list[df_min_idx], df_list[df_avg_idx])
 
 def str_to_date(date_string):
     ''' Converts a string to a date
@@ -129,8 +132,7 @@ def main():
     df_list = get_streamflow_data(date)
     instant_rate = get_streamflow_change(df_list[0])
 
-
-    print(get_streamflow_volume(df_list[0]))
+    print(get_streamflow_specials(df_list))
 
 if __name__ == "__main__":
     main()
