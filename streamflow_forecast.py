@@ -6,6 +6,7 @@ from datetime import datetime
 from datetime import timedelta
 from calendar import isleap
 import argparse
+import statistics
 
 def get_commandline_input():
     ''' Guides commandline parsing for streamflow program. Optional input string in form 'yyyy-mm-dd'. 
@@ -97,6 +98,15 @@ def get_streamflow_volume(df):
         avg_sum += width * (height + difference)
     return avg_sum
 
+def get_streamflow_stdev(df):
+    ''' Uses statistics to calculate standard deviation of all points and returns a numpy array of values 
+    
+    Args:
+        df (pandas dataframe)
+    '''
+    stdev_values = statistics.stdev(df.iloc[:,0])
+    
+    
 def get_streamflow_specials(df_list):
     ''' Using the total volume of a given streamflow, gets the highest, lowest, average and returns their dataframes
     
@@ -132,7 +142,8 @@ def main():
     df_list = get_streamflow_data(date)
     instant_rate = get_streamflow_change(df_list[0])
 
-    print(get_streamflow_specials(df_list))
+    #print(get_streamflow_specials(df_list))
+    get_streamflow_stdev(df_list[0])
 
 if __name__ == "__main__":
     main()
