@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import matplotlib
 from matplotlib import pyplot as plt
 import hydrofunctions as hf
 from datetime import datetime
@@ -40,7 +41,6 @@ def get_streamflow_data(anchor_date):
         anchor_date (date):
             should take on form 'yyyy-mm-dd'
     '''
-
     sensor = '11527000'
     sd = anchor_date - timedelta(days=14)
     ed = anchor_date + timedelta(days=6) # 6 + start_time
@@ -77,9 +77,8 @@ def get_streamflow_change(df):
     Args:
         df (pandas dataframe)
     '''
-
     streamflow = df.iloc[:,0]
-    water0, water1 = streamflow.tail(2)    
+    water0, water1 = streamflow.tail(2)   
     deltaY = water0 - water1
     deltaX = 15
     return (deltaY / deltaX) * 60
@@ -90,7 +89,6 @@ def get_streamflow_volume(df):
     Args:
         df (pandas dataframe)
     '''
-
     streamflow = df.iloc[:,0]
     
     # calculate the middle riemann sum
@@ -100,16 +98,18 @@ def get_streamflow_volume(df):
         height = streamflow.iloc[point]
         difference = (streamflow.iloc[point+1] - height) / 2 # find difference between two points and add it to first point
         avg_sum += width * (height + difference)
+    
+    # converting cubic feet to acre feet
+    avg_sum = avg_sum * (2.29568 * 10 ** -5)
     return avg_sum
 
 def get_streamflow_stdev(df):
-    ''' Uses statistics to calculate standard deviation of all points and returns a numpy array of values 
+    ''' Uses statistics to calculate standard deviation of a dataframe and returns a float 
     
     Args:
         df (pandas dataframe)
     '''
-    stdev_values = statistics.stdev(df.iloc[:,0])
-    
+    return statistics.stdev(df.iloc[:,0])
     
 def get_streamflow_specials(df_list):
     ''' Using the total volume of a given streamflow, gets the highest, lowest, average dataframes and returns them
@@ -117,7 +117,6 @@ def get_streamflow_specials(df_list):
     Args:
         df_list (list of pandas dataframes)
     '''
-
     volume_list = []
     for df in df_list:
         volume_list.append(get_streamflow_volume(df))
@@ -125,6 +124,8 @@ def get_streamflow_specials(df_list):
     df_max_idx = volume_list.index(max(volume_list))
     df_min_idx = volume_list.index(min(volume_list))
     df_avg_idx = len(sorted(volume_list)) // 2
+    # create new dataframe with each cell is the average of the same timeslot for the ten years
+    # new standard deviation method for above to calculate across the years (not in one year)
 
     return (df_list[df_max_idx], df_list[df_min_idx], df_list[df_avg_idx])
 
@@ -135,33 +136,48 @@ def str_to_date(date_string):
         date_string (str):
             should be in the form 'yyyy-mm-dd'
     '''
-
     return datetime.strptime(date_string, "%Y-%m-%d").date()
 
 def plot_streamflow():
+    ''' Plots max, min, avg, and current day streamflows using matplotlib '''
+    # tells matplotlib to use tkinter to display, without will result in FigureCanvasAgg non-interactable error
+    matplotlib.use('TkAgg')
+
     inputs = get_commandline_input()
     df_list = get_streamflow_data(inputs[2])
     df_current = df_list[0]
     instant_rate = get_streamflow_change(df_current)
+    total_volume = get_streamflow_volume(df_current)
     df_max, df_min, df_avg = get_streamflow_specials(df_list)
     
-    fig = plt.figure(figsize=(12,9))
+    plt.figure(figsize=(15,9))
 
     plt.plot(df_max.index, df_max[df_max.keys()[0]], label = 'Highest')
     plt.plot(df_min.index, df_min[df_min.keys()[0]], label = 'Lowest')
     plt.plot(df_current.index, df_current[df_current.keys()[0]], label = 'Current')
 
-    plt.title('Name of place (CFS)')
-    plt.xlabel('Water')
-    plt.ylabel('Time')
+    plt.suptitle('Name of place (CFS)', fontsize=15, y=0.93, weight='bold')
+    if instant_rate > 0:
+        plt.title(f'{total_volume:,.0f} acre-feet : rising {instant_rate:.1f} CFS/hr', fontsize=11)
+    elif instant_rate < 0:
+        plt.title(f'{total_volume:,.0f} acre-feet : dropping {instant_rate:.1f} CFS/hr', fontsize=11)
+    else:
+        plt.title(f'{total_volume:,.0f} acre-feet : stable at {instant_rate:.1f} CFS/hr', fontsize=11)
+    plt.xlabel('Time')
+    plt.ylabel('Water')
 
     plt.show()
 
+    # showing 2015 - 2024 not in concurrent year
 
 def main():
     #inputs = get_commandline_input()
     #df_list = get_streamflow_data(inputs[2])
-    #print(df_list[0].keys()[0])
+    #print(get_streamflow_change(df_list[0]))
+    #print(get_streamflow_volume(df_list[0]))
+    #get_streamflow_specials(df_list)
+    #print(get_streamflow_stdev(df_list[0]))
+    
     plot_streamflow()
 
 if __name__ == "__main__":
