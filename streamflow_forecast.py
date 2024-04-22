@@ -13,17 +13,21 @@ def get_commandline_input():
         If no input is given, returns today's date.
     '''
     parser = argparse.ArgumentParser(description='Controls date input for streamflow graph.')
-    parser.add_argument('-n', '--name', type='str', default='Trinity River', help='Name of the desired river')
+    parser.add_argument('-n', '--name', type=str, default='Trinity River', help='Name of the desired river')
     parser.add_argument('-s', '--sensor', type=str, default='11527000', help='Sensor number to access')
     parser.add_argument('-d', '--date', type=str, default='', help='Anchor date to view')
     args = parser.parse_args()
 
+    # fix this error checking
+    if args.name == '' and args.sensor == '' and args.date == '':
+        return (args.name, args.sensor, datetime.now.date())
+
     if args.date == '':
-        return datetime.now().date()
+        return (args.name, args.sensor, datetime.now().date())
     
     try:
         date = str_to_date(args.date)
-        return date
+        return (args.name, args.sensor, date)
     except Exception as e:
         print(e)
         return
@@ -108,7 +112,7 @@ def get_streamflow_stdev(df):
     
     
 def get_streamflow_specials(df_list):
-    ''' Using the total volume of a given streamflow, gets the highest, lowest, average and returns their dataframes
+    ''' Using the total volume of a given streamflow, gets the highest, lowest, average dataframes and returns them
     
     Args:
         df_list (list of pandas dataframes)
@@ -134,16 +138,31 @@ def str_to_date(date_string):
 
     return datetime.strptime(date_string, "%Y-%m-%d").date()
 
-def plot_stream():
-    pass
+def plot_streamflow():
+    inputs = get_commandline_input()
+    df_list = get_streamflow_data(inputs[2])
+    df_current = df_list[0]
+    instant_rate = get_streamflow_change(df_current)
+    df_max, df_min, df_avg = get_streamflow_specials(df_list)
+    
+    fig = plt.figure(figsize=(12,9))
+
+    plt.plot(df_max.index, df_max[df_max.keys()[0]], label = 'Highest')
+    plt.plot(df_min.index, df_min[df_min.keys()[0]], label = 'Lowest')
+    plt.plot(df_current.index, df_current[df_current.keys()[0]], label = 'Current')
+
+    plt.title('Name of place (CFS)')
+    plt.xlabel('Water')
+    plt.ylabel('Time')
+
+    plt.show()
+
 
 def main():
-    date = get_commandline_input()
-    df_list = get_streamflow_data(date)
-    instant_rate = get_streamflow_change(df_list[0])
-
-    #print(get_streamflow_specials(df_list))
-    get_streamflow_stdev(df_list[0])
+    #inputs = get_commandline_input()
+    #df_list = get_streamflow_data(inputs[2])
+    #print(df_list[0].keys()[0])
+    plot_streamflow()
 
 if __name__ == "__main__":
     main()
