@@ -65,7 +65,6 @@ def get_streamflow_data(anchor_date):
             sd -= delta
             ed -= delta
             data = hf.NWIS(sensor, 'iv', start_date=sd, end_date=ed)
-        # df = pd.concat([df, data.df('discharge')]) # 'appending' to dataframe for a single dataframe with all years' data
         df = data.df('discharge')
         df_list.append(df)
     
@@ -111,7 +110,7 @@ def get_streamflow_stdev(df):
     '''
     return statistics.stdev(df.iloc[:,0])
     
-def get_streamflow_specials(df_list):
+def get_streamflow_outliers(df_list):
     ''' Using the total volume of a given streamflow, gets the highest, lowest, average dataframes and returns them
     
     Args:
@@ -123,11 +122,16 @@ def get_streamflow_specials(df_list):
 
     df_max_idx = volume_list.index(max(volume_list))
     df_min_idx = volume_list.index(min(volume_list))
-    df_avg_idx = len(sorted(volume_list)) // 2
+
+    return (df_list[df_max_idx], df_list[df_min_idx])
+
+def get_streamflow_average(df_list):
+
     # create new dataframe with each cell is the average of the same timeslot for the ten years
     # new standard deviation method for above to calculate across the years (not in one year)
 
-    return (df_list[df_max_idx], df_list[df_min_idx], df_list[df_avg_idx])
+    for point in range(len(df_list[1])):
+        
 
 def str_to_date(date_string):
     ''' Converts a string to a date
@@ -136,7 +140,7 @@ def str_to_date(date_string):
         date_string (str):
             should be in the form 'yyyy-mm-dd'
     '''
-    return datetime.strptime(date_string, "%Y-%m-%d").date()
+    return datetime.strptime(date_string, '%Y-%m-%d').date()
 
 def plot_streamflow():
     ''' Plots max, min, avg, and current day streamflows using matplotlib '''
@@ -148,7 +152,7 @@ def plot_streamflow():
     df_current = df_list[0]
     instant_rate = get_streamflow_change(df_current)
     total_volume = get_streamflow_volume(df_current)
-    df_max, df_min, df_avg = get_streamflow_specials(df_list)
+    df_max, df_min = get_streamflow_outliers(df_list)
     
     plt.figure(figsize=(15,9))
 
