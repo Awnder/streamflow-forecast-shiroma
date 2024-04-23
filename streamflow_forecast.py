@@ -130,7 +130,10 @@ def get_streamflow_average(df_list):
     # create new dataframe with each cell is the average of the same timeslot for the ten years
     # new standard deviation method for above to calculate across the years (not in one year)
 
-    for point in range(len(df_list[1])):
+    df_avg = pd.DataFrame()
+
+    for index in range(len(df_list[1])):
+
         
 
 def str_to_date(date_string):
