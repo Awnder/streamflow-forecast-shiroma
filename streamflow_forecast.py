@@ -63,10 +63,8 @@ def get_streamflow_data(anchor_date):
         #sd -= delta
         #ed -= delta
 
-        sd = add_year(sd)
-        ed = add_year(ed)
-        print(sd, ed)
-        '''
+        sd = sub_year(sd)
+        ed = sub_year(ed)
         data = hf.NWIS(sensor, 'iv', start_date=sd, end_date=ed)
         df = data.df('discharge')
         
@@ -74,23 +72,26 @@ def get_streamflow_data(anchor_date):
         df.loc[:,'date'] = df.index.to_series().dt.strftime('%m-%d %H:%M:%S')
         df.set_index('date', inplace=True)
 
-        print(df.head(1))
-        print(df.tail(1))
-
         df_list.append(df)
     
-    return df_list'''
-    return 0
+    return df_list
 
 # https://bobbyhadz.com/blog/python-add-years-to-date
-def add_year(date):
+def sub_year(date):
+    ''' Subtracts one year without accounting for leap years
+    
+    Args: 
+        date (datetime object):
+            should be in the form yy-mm-dd
+    '''
     try:
-        return date.replace(year=date.year+1)
+        return date.replace(year=date.year-1)
     except:
-        return date.replace(year=date.year+1, day=28)
+        return date.replace(year=date.year-1, day=28)
 
 def get_streamflow_change(df):
     ''' Gets the rate of instantaneous change in CFS/hr at the last two points of the dataframe
+    Attribution and modified from: https://bobbyhadz.com/blog/python-add-years-to-date
 
     Args:
         df (pandas dataframe)
@@ -188,19 +189,15 @@ def plot_streamflow():
         return
     
     df_list = get_streamflow_data(inputs[2])
-    return
 
     df_cur = df_list[0]
     instant_rate = get_streamflow_change(df_cur)
     total_volume = get_streamflow_volume(df_cur)
+
     df_max, df_min = get_streamflow_outliers(df_list)
     df_max_idx = [index_to_datetime(idx) for idx in df_max.index]
     df_min_idx = [index_to_datetime(idx) for idx in df_min.index]
     df_cur_idx = [index_to_datetime(idx) for idx in df_cur.index]
-
-    #print(df_max.head(2))
-    #print(df_min.head(2))
-    #print(df_cur.head(2))
 
     plt.figure(figsize=(14,9))
 
