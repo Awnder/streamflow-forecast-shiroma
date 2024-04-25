@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import matplotlib
 from matplotlib import pyplot as plt
+import matplotlib.dates as mdates
 import hydrofunctions as hf
 from datetime import datetime
 from datetime import timedelta
@@ -19,19 +20,13 @@ def get_commandline_input():
     parser.add_argument('-d', '--date', type=str, default='', help='Anchor date to view')
     args = parser.parse_args()
 
-    # fix this error checking
-    if args.name == '' and args.sensor == '' and args.date == '':
-        return (args.name, args.sensor, datetime.now.date())
+    sensor = int(args.sensor)
 
-    if args.date == '':
-        return (args.name, args.sensor, datetime.now().date())
-    
-    try:
-        date = str_to_date(args.date)
-        return (args.name, args.sensor, date)
-    except Exception as e:
-        print(e)
-        return
+    if args.date.strip() == '':
+        return (args.name, sensor, datetime.now().date())
+    else:
+        date = str_to_yeardate(args.date)
+        return (args.name, sensor, date)
 
 def get_streamflow_data(anchor_date):
     ''' Gets the past two weeks of water data from given date, plus the past nine years of water data two weeks before 
@@ -51,24 +46,47 @@ def get_streamflow_data(anchor_date):
     # if date or time looks a bit odd, remember this is in UTC
     data = hf.NWIS(sensor, 'iv', start_date=sd, end_date=anchor_date)
     df = data.df('discharge')
+    df.loc[:,'date'] = df.index.to_series().dt.strftime('%m-%d %H:%M:%S')
+    df.set_index('date', inplace=True)
     df_list.append(df)
 
     # retrieving water data for three weeks for the past 9 years
     for i in range(9):
-        delta = timedelta(days=365)
-        if isleap((anchor_date - delta).year): # taking into account leap years
-            delta = timedelta(days=366)
-            sd -= delta
-            ed -= delta
-            data = hf.NWIS(sensor, 'iv', start_date=sd, end_date=ed)
-        else:
-            sd -= delta
-            ed -= delta
-            data = hf.NWIS(sensor, 'iv', start_date=sd, end_date=ed)
+        # delta = timedelta(days=365)
+        # ignoring leap years for now
+        #if isleap((anchor_date - delta).year): # taking into account leap years
+        #    delta = timedelta(days=366)
+        #    sd -= delta
+        #    ed -= delta
+        #    data = hf.NWIS(sensor, 'iv', start_date=sd, end_date=ed)
+        #else:
+        #sd -= delta
+        #ed -= delta
+
+        sd = add_year(sd)
+        ed = add_year(ed)
+        print(sd, ed)
+        '''
+        data = hf.NWIS(sensor, 'iv', start_date=sd, end_date=ed)
         df = data.df('discharge')
+        
+        # changing datetime64 index values to month-day strings (this allows graphing over each other ie: 2014 and 2015)
+        df.loc[:,'date'] = df.index.to_series().dt.strftime('%m-%d %H:%M:%S')
+        df.set_index('date', inplace=True)
+
+        print(df.head(1))
+        print(df.tail(1))
+
         df_list.append(df)
     
-    return df_list
+    return df_list'''
+    return 0
+
+def add_year(date):
+    try:
+        return date.replace(year=date.year+1)
+    except:
+        return date.replace(year=date.year+1, day=28)
 
 def get_streamflow_change(df):
     ''' Gets the rate of instantaneous change in CFS/hr at the last two points of the dataframe
@@ -131,13 +149,16 @@ def get_streamflow_average(df_list):
     # new standard deviation method for above to calculate across the years (not in one year)
 
     df_avg = pd.DataFrame()
+    df_list.pop(0) # removing current data - only want historical
 
-    for index in range(len(df_list[1])):
+    merged_df = pd.concat([df for df in df_list])
+    print(merged_df.head(1))
+    print(merged_df.tail(1))
 
-        
+    #for df in df_list:
 
-def str_to_date(date_string):
-    ''' Converts a string to a date
+def str_to_yeardate(date_string):
+    ''' Converts a string to a datetime object with a year
     
     Args:
         date_string (str):
@@ -145,23 +166,49 @@ def str_to_date(date_string):
     '''
     return datetime.strptime(date_string, '%Y-%m-%d').date()
 
+def index_to_datetime(date_string):
+    ''' Converts the string index to a datetime object without a year
+    
+    Args:
+        date_string (str):
+            should be in the form 'mm-dd H:M:S'
+    '''
+    return datetime.strptime(date_string, '%m-%d %H:%M:%S')
+
 def plot_streamflow():
     ''' Plots max, min, avg, and current day streamflows using matplotlib '''
     # tells matplotlib to use tkinter to display, without will result in FigureCanvasAgg non-interactable error
     matplotlib.use('TkAgg')
 
-    inputs = get_commandline_input()
-    df_list = get_streamflow_data(inputs[2])
-    df_current = df_list[0]
-    instant_rate = get_streamflow_change(df_current)
-    total_volume = get_streamflow_volume(df_current)
-    df_max, df_min = get_streamflow_outliers(df_list)
+    try:
+        inputs = get_commandline_input()
+    except Exception as e:
+        print(e)
+        return
     
-    plt.figure(figsize=(15,9))
+    df_list = get_streamflow_data(inputs[2])
+    return
 
-    plt.plot(df_max.index, df_max[df_max.keys()[0]], label = 'Highest')
-    plt.plot(df_min.index, df_min[df_min.keys()[0]], label = 'Lowest')
-    plt.plot(df_current.index, df_current[df_current.keys()[0]], label = 'Current')
+    df_cur = df_list[0]
+    instant_rate = get_streamflow_change(df_cur)
+    total_volume = get_streamflow_volume(df_cur)
+    df_max, df_min = get_streamflow_outliers(df_list)
+    df_max_idx = [index_to_datetime(idx) for idx in df_max.index]
+    df_min_idx = [index_to_datetime(idx) for idx in df_min.index]
+    df_cur_idx = [index_to_datetime(idx) for idx in df_cur.index]
+
+    #print(df_max.head(2))
+    #print(df_min.head(2))
+    #print(df_cur.head(2))
+
+    plt.figure(figsize=(14,9))
+
+    plt.plot(df_max_idx, df_max[df_max.keys()[0]], label = 'Highest')
+    plt.plot(df_min_idx, df_min[df_min.keys()[0]], label = 'Lowest')
+    plt.plot(df_cur_idx, df_cur[df_cur.keys()[0]], label = 'Current')
+    # plt.plot(df_cur_idx[len(df_cur_idx)-1], [instant_rate for i in range(df_cur_idx[len(df_cur_idx)-1], len(df_max_idx)-1)])
+
+    plt.axvline(x=df_cur_idx[len(df_cur_idx)-1], color='red', linewidth=0.7, alpha=0.4)
 
     plt.suptitle('Name of place (CFS)', fontsize=15, y=0.93, weight='bold')
     if instant_rate > 0:
@@ -170,12 +217,13 @@ def plot_streamflow():
         plt.title(f'{total_volume:,.0f} acre-feet : dropping {instant_rate:.1f} CFS/hr', fontsize=11)
     else:
         plt.title(f'{total_volume:,.0f} acre-feet : stable at {instant_rate:.1f} CFS/hr', fontsize=11)
+    
+    # setting dates to 
+    plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%b%d'))
     plt.xlabel('Time')
     plt.ylabel('Water')
-
+    plt.legend(loc='best')
     plt.show()
-
-    # showing 2015 - 2024 not in concurrent year
 
 def main():
     #inputs = get_commandline_input()
@@ -184,7 +232,8 @@ def main():
     #print(get_streamflow_volume(df_list[0]))
     #get_streamflow_specials(df_list)
     #print(get_streamflow_stdev(df_list[0]))
-    
+    # get_streamflow_average(df_list)
+    # print(df_list[0].index)
     plot_streamflow()
 
 if __name__ == "__main__":
