@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 import matplotlib
 from matplotlib import pyplot as plt
 import matplotlib.dates as mdates
@@ -147,18 +148,40 @@ def get_streamflow_outliers(df_list):
     return (df_list[df_max_idx], df_list[df_min_idx])
 
 def get_streamflow_average(df_list):
-
-    # create new dataframe with each cell is the average of the same timeslot for the ten years
     # new standard deviation method for above to calculate across the years (not in one year)
-
-    df_avg = pd.DataFrame()
     df_list.pop(0) # removing current data - only want historical
 
-    merged_df = pd.concat([df for df in df_list])
-    print(merged_df.head(1))
-    print(merged_df.tail(1))
+    merged_df = pd.concat([df.drop('year', axis='columns') for df in df_list])
+    print(merged_df.head())
+    merged_df.loc['avgs'] = merged_df.sum(axis='rows')
+    print(merged_df.head())
 
-    #for df in df_list:
+def calculate_linear_regression(df):
+    return
+    # evaluating the linear regression line's slope and y_int
+    sum_x = 0
+    sum_y = 0
+    sum_xy = 0
+    sum_x_sq = 0
+    n = len(x_data)
+
+    for x, y in zip(x_data, y_data):
+        sum_x += x
+        sum_y += y
+        sum_xy += x * y
+        sum_x_sq += x ** 2
+
+    slope = (n * sum_xy - sum_x * sum_y) / (n * sum_x_sq - sum_x ** 2)
+    y_int = (sum_y - slope * sum_x) / n
+
+    # finding the linear regression line's smallest and largest points
+    min_x = min(x_data)
+    max_x = max(x_data)
+    y1 = y_int + slope * min_x
+    y2 = y_int + slope * max_x
+
+    return (min_x, max_x, y1, y2)
+
 
 def str_to_yeardate(date_string):
     ''' Converts a string to a datetime object with a year
@@ -196,15 +219,20 @@ def plot_streamflow():
     total_volume = get_streamflow_volume(df_cur)
 
     df_max, df_min = get_streamflow_outliers(df_list)
+    df_avg = get_streamflow_average(df_list)
     df_max_idx = [index_to_datetime(idx) for idx in df_max.index]
     df_min_idx = [index_to_datetime(idx) for idx in df_min.index]
     df_cur_idx = [index_to_datetime(idx) for idx in df_cur.index]
+
+    # calculate_linear_regression(df_cur)
 
     plt.figure(figsize=(14,9))
 
     plt.plot(df_max_idx, df_max[df_max.keys()[0]], label = f'Highest ({df_max.iat[2,1]})')
     plt.plot(df_min_idx, df_min[df_min.keys()[0]], label = f'Lowest ({df_min.iat[2,1]})')
     plt.plot(df_cur_idx, df_cur[df_cur.keys()[0]], label = f'Current ({df_cur.iat[2,1]})')
+
+    # plt.plot(np.linspace())
     # plt.plot(df_cur_idx[len(df_cur_idx)-1], [instant_rate for i in range(df_cur_idx[len(df_cur_idx)-1], len(df_max_idx)-1)])
 
     # have to convert index string -> datetime -> string to format
