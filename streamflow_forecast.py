@@ -151,9 +151,11 @@ def get_streamflow_average(df_list):
     # new standard deviation method for above to calculate across the years (not in one year)
     df_list.pop(0) # removing current data - only want historical
 
-    merged_df = pd.concat([df.drop('year', axis='columns') for df in df_list])
+    merged_df = pd.concat([df.drop('year', axis='columns') for df in df_list], axis='columns', ignore_index=True)
     print(merged_df.head())
-    merged_df.loc['avgs'] = merged_df.sum(axis='rows')
+    merged_df.reset_index()
+    # merged_df.drop('date', inplace=True)
+    merged_df.loc[:, 'avgs'] = merged_df.sum(axis='rows', skipna=True)
     print(merged_df.head())
 
 def calculate_linear_regression(df):
