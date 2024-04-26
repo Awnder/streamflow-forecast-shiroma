@@ -1,5 +1,4 @@
 import pandas as pd
-import numpy as np
 import matplotlib
 from matplotlib import pyplot as plt
 import matplotlib.dates as mdates
@@ -46,6 +45,7 @@ def get_streamflow_data(anchor_date):
     # if date or time looks a bit odd, remember this is in UTC
     data = hf.NWIS(sensor, 'iv', start_date=sd, end_date=anchor_date)
     df = data.df('discharge')
+    df.loc[:,'year'] = df.index.to_series().dt.strftime('%Y')
     df.loc[:,'date'] = df.index.to_series().dt.strftime('%m-%d %H:%M:%S')
     df.set_index('date', inplace=True)
     df_list.append(df)
@@ -68,6 +68,7 @@ def get_streamflow_data(anchor_date):
         data = hf.NWIS(sensor, 'iv', start_date=sd, end_date=ed)
         df = data.df('discharge')
         
+        df.loc[:,'year'] = df.index.to_series().dt.strftime('%Y')
         # changing datetime64 index values to month-day strings (this allows graphing over each other ie: 2014 and 2015)
         df.loc[:,'date'] = df.index.to_series().dt.strftime('%m-%d %H:%M:%S')
         df.set_index('date', inplace=True)
@@ -201,12 +202,14 @@ def plot_streamflow():
 
     plt.figure(figsize=(14,9))
 
-    plt.plot(df_max_idx, df_max[df_max.keys()[0]], label = 'Highest')
-    plt.plot(df_min_idx, df_min[df_min.keys()[0]], label = 'Lowest')
-    plt.plot(df_cur_idx, df_cur[df_cur.keys()[0]], label = 'Current')
+    plt.plot(df_max_idx, df_max[df_max.keys()[0]], label = f'Highest ({df_max.iat[2,1]})')
+    plt.plot(df_min_idx, df_min[df_min.keys()[0]], label = f'Lowest ({df_min.iat[2,1]})')
+    plt.plot(df_cur_idx, df_cur[df_cur.keys()[0]], label = f'Current ({df_cur.iat[2,1]})')
     # plt.plot(df_cur_idx[len(df_cur_idx)-1], [instant_rate for i in range(df_cur_idx[len(df_cur_idx)-1], len(df_max_idx)-1)])
 
-    plt.axvline(x=df_cur_idx[len(df_cur_idx)-1], color='red', linewidth=0.7, alpha=0.4)
+    # have to convert index string -> datetime -> string to format
+    axvline_time = datetime.strftime(datetime.strptime(df_cur.index[-1], '%m-%d %H:%M:%S'), '%b %d %H:%M')
+    plt.axvline(x=df_cur_idx[len(df_cur_idx)-1], label=f'{axvline_time}', color='red', linewidth=0.7, alpha=0.5)
 
     plt.suptitle('Name of place (CFS)', fontsize=15, y=0.93, weight='bold')
     if instant_rate > 0:
