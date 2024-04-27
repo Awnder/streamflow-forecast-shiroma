@@ -1,5 +1,4 @@
 import pandas as pd
-import numpy as np
 import matplotlib
 from matplotlib import pyplot as plt
 import matplotlib.dates as mdates
@@ -9,25 +8,33 @@ from datetime import timedelta
 import argparse
 
 def get_commandline_input():
-    ''' Guides commandline parsing for streamflow program. Optional input string in form 'yyyy-mm-dd'. 
-        If no input is given, returns today's date.
+    ''' Guides commandline parsing for streamflow program.
+    Default settings:
+        name: Trinity River at Burnt Range Gorge (note only affects plot title and not the actual data gathering)
+        sensor: 11527000 (the sensor for Burnt Range Gorge)
+        date: the current date in form yy-mm-dd
+   
+    Settings can be modified:
+        name: any string input
+        sensor: string input of numbers (must be a valid USGS sensor number)
+        date: string input in form yy-mm-dd
 
     Returns:
-        (args.name, sensor, date) (tuple of two strings and a datetime object)
+        (args.name, sensor, date_valid) (tuple of two strings and a datetime object)
     '''
     parser = argparse.ArgumentParser(description='Controls date input for streamflow graph.')
     parser.add_argument('-n', '--name', type=str, default='Trinity River at Burnt Range Gorge', help='Name of the desired river')
     parser.add_argument('-s', '--sensor', type=str, default='11527000', help='Sensor number to access')
-    parser.add_argument('-d', '--date', type=str, default='', help='Anchor date to view')
+    parser.add_argument('-d', '--date', type=str, default=datetime.strftime(datetime.now().date(), '%Y-%m-%d'), help='Anchor date to view')
     args = parser.parse_args()
+    
+    sensor = hf.check_parameter_string(args.sensor, 'site')
+    date_valid = hf.check_datestr(args.date)
+    date_valid = datetime.strptime(date_valid, '%Y-%m-%d').date()
 
-    sensor = int(args.sensor)
+    print(f'Acquring data for {args.name} for sensor {sensor} with anchor date {date_valid}')
 
-    if args.date.strip() == '':
-        return (args.name, sensor, datetime.now().date())
-    else:
-        date = datetime.strptime(args.date, '%Y-%m-%d').date()
-        return (args.name, sensor, date)
+    return (args.name, sensor, date_valid)
 
 def get_streamflow_data(anchor_date):
     ''' Gets the past two weeks of water data from given date, plus the past nine years of water data two weeks before 
@@ -82,7 +89,8 @@ def get_streamflow_data(anchor_date):
 def sub_year(date):
     ''' Subtracts one year without changing days for leap year (because a leap year has 366 days)
         This keeps date queries from moving one day off the other whenever a there is a leap year.
-    
+        Attribution and modified from: https://bobbyhadz.com/blog/python-add-years-to-date
+
     Args: 
         date (datetime object):
             should be in the form yy-mm-dd
@@ -97,7 +105,6 @@ def sub_year(date):
 
 def get_streamflow_change(df):
     ''' Gets the rate of instantaneous change in CFS/hr at the last two points of the dataframe
-    Attribution and modified from: https://bobbyhadz.com/blog/python-add-years-to-date
 
     Args:
         df (pandas dataframe)
@@ -282,6 +289,9 @@ def plot_streamflow():
     plt.show()
 
 def main():
+    # turns warnings off
+    pd.options.mode.chained_assignment = None
+
     plot_streamflow()
 
 if __name__ == "__main__":
