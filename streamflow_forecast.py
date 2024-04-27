@@ -6,16 +6,14 @@ import matplotlib.dates as mdates
 import hydrofunctions as hf
 from datetime import datetime
 from datetime import timedelta
-from calendar import isleap
 import argparse
-import statistics
 
 def get_commandline_input():
     ''' Guides commandline parsing for streamflow program. Optional input string in form 'yyyy-mm-dd'. 
         If no input is given, returns today's date.
     '''
     parser = argparse.ArgumentParser(description='Controls date input for streamflow graph.')
-    parser.add_argument('-n', '--name', type=str, default='Trinity River', help='Name of the desired river')
+    parser.add_argument('-n', '--name', type=str, default='Trinity River at Burnt Range Gorge', help='Name of the desired river')
     parser.add_argument('-s', '--sensor', type=str, default='11527000', help='Sensor number to access')
     parser.add_argument('-d', '--date', type=str, default='', help='Anchor date to view')
     args = parser.parse_args()
@@ -25,7 +23,7 @@ def get_commandline_input():
     if args.date.strip() == '':
         return (args.name, sensor, datetime.now().date())
     else:
-        date = str_to_yeardate(args.date)
+        date = datetime.strptime(args.date, '%Y-%m-%d').date()
         return (args.name, sensor, date)
 
 def get_streamflow_data(anchor_date):
@@ -48,12 +46,12 @@ def get_streamflow_data(anchor_date):
     
     # storing datetime64 index separately into Year and Month-Day-Time string-type columns
     # this allows different years to graph over each other instead of plotting continuously year-by-year
-    df.loc[:,'year'] = df.index.to_series().dt.strftime('%Y')
-    df.loc[:,'date'] = df.index.to_series().dt.strftime('%m-%d %H:%M:%S')
-    df.set_index('date', inplace=True)
+    df['year'] = df.index.to_series().dt.strftime('%Y')
+    df['date'] = df.index.to_series().dt.strftime('%m-%d %H:%M:%S')
+    df = df.set_index('date')
     
     # renaming the water data from a USGS number
-    df.rename(columns={df.keys()[0] : 'streamflow'}, inplace=True)
+    df = df.rename(columns={df.keys()[0] : 'streamflow'})
 
     df_list.append(df)
 
@@ -64,11 +62,11 @@ def get_streamflow_data(anchor_date):
         data = hf.NWIS(sensor, 'iv', start_date=sd, end_date=ed)
         df = data.df('discharge')
         
-        df.loc[:,'year'] = df.index.to_series().dt.strftime('%Y')
-        df.loc[:,'date'] = df.index.to_series().dt.strftime('%m-%d %H:%M:%S')
-        df.set_index('date', inplace=True)
+        df['year'] = df.index.to_series().dt.strftime('%Y')
+        df['date'] = df.index.to_series().dt.strftime('%m-%d %H:%M:%S')
+        df = df.set_index('date')
 
-        df.rename(columns={df.keys()[0] : 'streamflow'}, inplace=True)
+        df = df.rename(columns={df.keys()[0] : 'streamflow'})
 
         df_list.append(df)
     
@@ -121,14 +119,6 @@ def get_streamflow_volume(df):
     avg_sum = avg_sum * (2.29568 * 10 ** -5)
     return avg_sum
 
-def get_streamflow_stdev(df):
-    ''' Uses statistics to calculate standard deviation of a dataframe and returns a float 
-    
-    Args:
-        df (pandas dataframe)
-    '''
-    return statistics.stdev(df.iloc[:,0])
-    
 def get_streamflow_outliers(df_list):
     ''' Using the total volume of a given streamflow, gets the highest, lowest, average dataframes and returns them
     
@@ -156,10 +146,7 @@ def get_streamflow_average(df_list):
     # merging all dataframes together and dropping year column
     df_merged = pd.concat([df.drop('year', axis='columns') for df in df_list], axis='columns', ignore_index=True)
 
-    # changing string date index to numerical indecies to allow for linear regression calculation
-    df_merged = df_merged.reset_index(drop=True)
-
-    df_merged.loc['avg'] = df_merged.sum(axis='columns') / df_merged.shape[1]
+    df_merged['avg'] = df_merged.sum(axis='columns') / df_merged.shape[1]
     
     return df_merged
 
@@ -192,15 +179,6 @@ def calculate_linear_regression(df):
 
     return (y1, y2)
 
-def str_to_yeardate(date_string):
-    ''' Converts a string to a datetime object with a year
-    
-    Args:
-        date_string (str):
-            should be in the form 'yyyy-mm-dd'
-    '''
-    return datetime.strptime(date_string, '%Y-%m-%d').date()
-
 def index_to_datetime(date_string):
     ''' Converts the string index to a datetime object without a year
     
@@ -229,28 +207,33 @@ def plot_streamflow():
 
     instant_rate = get_streamflow_change(df_cur)
     total_volume = get_streamflow_volume(df_cur)
+    avg_std = df_avg['avg'].std()
     reg_y1, reg_y2 = calculate_linear_regression(df_cur)
     reg_difference = df_cur['streamflow'].iloc[-1] - reg_y1
 
     # indecies of all dataframes are in string format (see get_streamflow_data function) so converting back to datetime
     df_cur_idx = [index_to_datetime(idx) for idx in df_cur.index]
-    df_max_idx = [index_to_datetime(idx) for idx in df_max.index]
-    df_min_idx = [index_to_datetime(idx) for idx in df_min.index]
+    # max, min, and avg all share the same dates (besides year) so can use same index for all of them
+    df_hist_idx = [index_to_datetime(idx) for idx in df_max.index]
 
     cur_last_index = len(df_cur_idx)-1
-    max_last_index = len(df_max_idx)-1
+    hist_last_index = len(df_hist_idx)-1
 
     plt.figure(figsize=(14,9))
 
-    plt.plot(df_max_idx, df_max['streamflow'], label = f'Highest ({df_max.iat[2,1]})')
-    plt.plot(df_min_idx, df_min['streamflow'], label = f'Lowest ({df_min.iat[2,1]})')
+    plt.plot(df_hist_idx, df_max['streamflow'], label = f'Highest ({df_max.iat[2,1]})')
+    plt.plot(df_hist_idx, df_min['streamflow'], label = f'Lowest ({df_min.iat[2,1]})')
     plt.plot(df_cur_idx, df_cur['streamflow'], label = f'Current ({df_cur.iat[2,1]})', color='green')
+
+    # plots standard deviation of the streamflow average of 9 prior years  
+    plt.fill_between(df_hist_idx, df_avg['avg']-avg_std, df_avg['avg']+avg_std, color='grey', alpha=0.2)
+
     # plots linear regression line from end of df_cur plot to end of df_max/min plot, and shifts y values up
-    plt.plot([df_cur_idx[cur_last_index], df_max_idx[max_last_index]], [reg_y1+reg_difference, reg_y2+reg_difference], color='green')
+    plt.plot([df_cur_idx[cur_last_index], df_hist_idx[hist_last_index]], [reg_y1+reg_difference, reg_y2+reg_difference], color='green')
 
     # have to convert index string -> datetime -> string to format
     axvline_time = datetime.strftime(datetime.strptime(df_cur.index[-1], '%m-%d %H:%M:%S'), '%b %d %H:%M')
-    plt.axvline(x=df_cur_idx[cur_last_index], label=f'{axvline_time}', color='red', linewidth=0.7, alpha=0.5)
+    plt.axvline(x=df_cur_idx[cur_last_index], label=f'{axvline_time}', color='red', linewidth=0.8, alpha=0.5)
 
     plt.suptitle(f'{inputs[0]} (CFS)', fontsize=15, y=0.93, weight='bold')
     if instant_rate > 0:
@@ -260,7 +243,7 @@ def plot_streamflow():
     else:
         plt.title(f'{total_volume:,.0f} acre-feet : stable at {instant_rate:.1f} CFS/hr', fontsize=11)
     
-    # setting dates to 
+    # displaying dates as abbreviation and day
     plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%b%d'))
     plt.xlabel('Time')
     plt.ylabel('Water')
