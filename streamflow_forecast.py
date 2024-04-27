@@ -11,6 +11,9 @@ import argparse
 def get_commandline_input():
     ''' Guides commandline parsing for streamflow program. Optional input string in form 'yyyy-mm-dd'. 
         If no input is given, returns today's date.
+
+    Returns:
+        (args.name, sensor, date) (tuple of two strings and a datetime object)
     '''
     parser = argparse.ArgumentParser(description='Controls date input for streamflow graph.')
     parser.add_argument('-n', '--name', type=str, default='Trinity River at Burnt Range Gorge', help='Name of the desired river')
@@ -33,6 +36,9 @@ def get_streamflow_data(anchor_date):
     Args:
         anchor_date (date):
             should take on form 'yyyy-mm-dd'
+    
+    Returns:
+        df_list (list of panda dataframes)
     '''
     sensor = '11527000'
     sd = anchor_date - timedelta(days=14)
@@ -80,6 +86,9 @@ def sub_year(date):
     Args: 
         date (datetime object):
             should be in the form yy-mm-dd
+
+    Returns:
+        a datetime object
     '''
     try:
         return date.replace(year=date.year-1)
@@ -92,6 +101,9 @@ def get_streamflow_change(df):
 
     Args:
         df (pandas dataframe)
+
+    Returns:
+        a float
     '''
     streamflow = df.iloc[:,0]
     water0, water1 = streamflow.tail(2)   
@@ -104,6 +116,9 @@ def get_streamflow_volume(df):
     
     Args:
         df (pandas dataframe)
+    
+    Returns:
+        avg_sum (float)
     '''
     streamflow = df.iloc[:,0]
     
@@ -124,6 +139,9 @@ def get_streamflow_outliers(df_list):
     
     Args:
         df_list (list of pandas dataframes)
+
+    Returns:
+        (df_list[df_max_idx], df_list[df_min_idx]) (tuple of two pandas dataframes)
     '''
     volume_list = []
     for df in df_list:
@@ -139,6 +157,9 @@ def get_streamflow_average(df_list):
     
     Args:
         df_list (list of pandas dataframes)
+
+    Returns: 
+        df_merged (pandas dataframe)
     '''
     # removing current data - only want historical
     df_list.pop(0)
@@ -151,6 +172,14 @@ def get_streamflow_average(df_list):
     return df_merged
 
 def calculate_linear_regression(df):
+    ''' Calculates the linear regression for the streamflow of a given dataframe. Removes date indexing to allow this.
+
+    Args: 
+        df (pandas dataframe)
+
+    Returns: 
+        (y1, y2) (tuple of two floats)
+    '''
     df = df.reset_index(drop=True)
     xs = [x for x in df['streamflow'].tolist() if isinstance(x, float)]
     ys = df.index.to_list()
@@ -183,8 +212,10 @@ def index_to_datetime(date_string):
     ''' Converts the string index to a datetime object without a year
     
     Args:
-        date_string (str):
-            should be in the form 'mm-dd H:M:S'
+        date_string (str) in form 'mm-dd H:M:S'
+
+    Returns:
+        a datetime object in form '%m-%d %H:%M:%S'
     '''
     return datetime.strptime(date_string, '%m-%d %H:%M:%S')
 
