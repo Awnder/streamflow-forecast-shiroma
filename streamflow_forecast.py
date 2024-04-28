@@ -113,8 +113,8 @@ def get_streamflow_change(df):
         a float
     '''
     streamflow = df.iloc[:,0]
-    water0, water1 = streamflow.tail(2)   
-    deltaY = water0 - water1
+    water0, water1 = streamflow.tail(2)  
+    deltaY = water1 - water0
     deltaX = 15
     return (deltaY / deltaX) * 60
 
@@ -245,7 +245,7 @@ def plot_streamflow():
 
     instant_rate = get_streamflow_change(df_cur)
     total_volume = get_streamflow_volume(df_cur)
-    avg_std = df_avg['avg'].std()
+    avg_std = df_avg['avg'].std() / 2
     reg_y1, reg_y2 = calculate_linear_regression(df_cur)
     reg_difference = df_cur['streamflow'].iloc[-1] - reg_y1
 
@@ -264,6 +264,7 @@ def plot_streamflow():
     plt.plot(df_cur_idx, df_cur['streamflow'], label = f'Current ({df_cur.iat[2,1]})', color='green')
 
     # plots standard deviation of the streamflow average of 9 prior years  
+    plt.plot(df_hist_idx, df_avg['avg'], color='grey', alpha=0.07, label='Average Water')
     plt.fill_between(df_hist_idx, df_avg['avg']-avg_std, df_avg['avg']+avg_std, color='grey', alpha=0.2)
 
     # plots linear regression line from end of df_cur plot to end of df_max/min plot, and shifts y values up
