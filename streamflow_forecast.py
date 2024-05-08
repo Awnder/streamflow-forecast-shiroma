@@ -239,15 +239,21 @@ def plot_streamflow():
     
     df_list = get_streamflow_data(inputs[2])
 
+    # creating the dataframes
     df_cur = df_list[0]
     df_max, df_min = get_streamflow_outliers(df_list)
     df_avg = get_streamflow_average(df_list)
 
+    # getting displayable title data
     instant_rate = get_streamflow_change(df_cur)
     total_volume = get_streamflow_volume(df_cur)
-    avg_std = df_avg['avg'].std() / 2
+
+    # calculating linear regression
     reg_y1, reg_y2 = calculate_linear_regression(df_cur)
-    reg_difference = df_cur['streamflow'].iloc[-1] - reg_y1
+    reg_difference = df_cur['streamflow'].iloc[-1] - reg_y2
+
+    # getting 1/2 the standard deviation of the average streamflow
+    avg_std = df_avg['avg'].std() / 2
 
     # indecies of all dataframes are in string format (see get_streamflow_data function) so converting back to datetime
     df_cur_idx = [index_to_datetime(idx) for idx in df_cur.index]
@@ -263,12 +269,12 @@ def plot_streamflow():
     plt.plot(df_hist_idx, df_min['streamflow'], label = f'Lowest ({df_min.iat[2,1]})')
     plt.plot(df_cur_idx, df_cur['streamflow'], label = f'Current ({df_cur.iat[2,1]})', color='green')
 
-    # plots standard deviation of the streamflow average of 9 prior years  
+    # plots standard deviation of the streamflow average of 9 prior years
     plt.plot(df_hist_idx, df_avg['avg'], color='grey', alpha=0.07, label='Average Water')
     plt.fill_between(df_hist_idx, df_avg['avg']-avg_std, df_avg['avg']+avg_std, color='grey', alpha=0.2)
 
     # plots linear regression line from end of df_cur plot to end of df_max/min plot, and shifts y values up
-    plt.plot([df_cur_idx[cur_last_index], df_hist_idx[hist_last_index]], [reg_y1+reg_difference, reg_y2+reg_difference], color='green')
+    plt.plot([df_cur_idx[cur_last_index], df_hist_idx[hist_last_index]], [reg_y2+reg_difference, reg_y1+reg_difference], color='green')
 
     # have to convert index string -> datetime -> string to format
     axvline_time = datetime.strftime(datetime.strptime(df_cur.index[-1], '%m-%d %H:%M:%S'), '%b %d %H:%M')
@@ -278,7 +284,7 @@ def plot_streamflow():
     if instant_rate > 0:
         plt.title(f'{total_volume:,.0f} acre-feet : rising {instant_rate:.1f} CFS/hr', fontsize=11)
     elif instant_rate < 0:
-        plt.title(f'{total_volume:,.0f} acre-feet : dropping {instant_rate:.1f} CFS/hr', fontsize=11)
+        plt.title(f'{total_volume:,.0f} acre-feet : dropping {abs(instant_rate):.1f} CFS/hr', fontsize=11)
     else:
         plt.title(f'{total_volume:,.0f} acre-feet : stable at {instant_rate:.1f} CFS/hr', fontsize=11)
     
@@ -290,9 +296,8 @@ def plot_streamflow():
     plt.show()
 
 def main():
-    # turns warnings off
+    # turns pandas warnings about views and copies off
     pd.options.mode.chained_assignment = None
-
     plot_streamflow()
 
 if __name__ == "__main__":
