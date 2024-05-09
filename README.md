@@ -16,10 +16,7 @@ For real-world experience, this class project was created to demonstrate:
 ## How to use this program?
 Clone the respository!
 
-Note this project uses the following packages. Use pip to install relevant uninstalled packages. 
-```
-pip install ____
-```
+**Note this project uses the following packages.** Use ```pip install``` to install relevant uninstalled packages. 
 1) pandas
 2) matplotlib
 3) datetime
@@ -27,10 +24,10 @@ pip install ____
 5) [hydrofunctions](https://pypi.org/project/hydrofunctions/) - downloads water data from the [United States Geological Survey (USGS) National Water Information System (NWIS)](https://waterdata.usgs.gov/nwis)
 
 Commandline arguments are used to get desired government water sensor and date. Use the ```-h``` or ```-help``` flag to get details.
-```
-python .\streamflow_forecast.py -h
-```
+
 There are three control inputs:
 1) ```-n``` or ```-name```: the name of the desired river. As data is retrieved using the sensor ID, this does not impact data retrieval. This is displayed in the graph title, however. Default is "Trinity River at Burnt Range Gorge".
 2) ```-s``` or ```-sensor```: the sensor ID. The user will have to manually find this ID from the USGS NWIS website. Default is "11527000".
 3) ```-d``` or ```-date```: the anchor date on which to start data retrieval. Default is today's date.
+
+Finally, run the program using your version of python with the desired flags and see your results!
