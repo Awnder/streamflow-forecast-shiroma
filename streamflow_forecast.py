@@ -264,6 +264,7 @@ def plot_streamflow():
     hist_last_index = len(df_hist_idx)-1
 
     plt.figure(figsize=(14,9))
+    plt.title('Streamflow Graph')
 
     plt.plot(df_hist_idx, df_max['streamflow'], label = f'Highest ({df_max.iat[2,1]})')
     plt.plot(df_hist_idx, df_min['streamflow'], label = f'Lowest ({df_min.iat[2,1]})')
