@@ -22,7 +22,7 @@ def get_commandline_input():
     Returns:
         (args.name, sensor, date_valid) (tuple of two strings and a datetime object)
     '''
-    parser = argparse.ArgumentParser(description='Controls date input for streamflow graph.')
+    parser = argparse.ArgumentParser(description='Controls input for streamflow graph.')
     parser.add_argument('-n', '--name', type=str, default='Trinity River at Burnt Range Gorge', help='Name of the desired river')
     parser.add_argument('-s', '--sensor', type=str, default='11527000', help='Sensor number to access')
     parser.add_argument('-d', '--date', type=str, default=datetime.strftime(datetime.now().date(), '%Y-%m-%d'), help='Anchor date to view')
