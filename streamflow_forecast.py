@@ -253,7 +253,7 @@ def plot_streamflow():
     reg_difference = df_cur['streamflow'].iloc[-1] - reg_y2
 
     # getting 1/2 the standard deviation of the average streamflow
-    avg_std = df_avg['avg'].std() / 2
+    avg_std = df_avg[[0,1,2,3,4,5,6,7,8]].std(axis='columns') / 2
 
     # indecies of all dataframes are in string format (see get_streamflow_data function) so converting back to datetime
     df_cur_idx = [index_to_datetime(idx) for idx in df_cur.index]
