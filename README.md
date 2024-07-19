@@ -14,7 +14,7 @@ For real-world experience, this class project was created to demonstrate:
 4) descriptive variable naming to let docstrings and comments be secondary descriptors
 
 ## How to use this program?
-Clone the respository!
+Clone the repository!
 
 **Note this project uses the following packages.** Use ```pip install``` to install relevant uninstalled packages. 
 1) pandas
